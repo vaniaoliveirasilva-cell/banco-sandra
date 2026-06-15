@@ -4,70 +4,93 @@
     <meta charset="UTF-8">
     <title>Administração - Banco VaniaCoin</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background-color: #f4f4f9; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; background-color: #f4f4f9; }
         .box { border: 2px solid #28a745; padding: 20px; border-radius: 8px; width: 400px; background: white; margin-bottom: 20px; display: none; }
+        #loginAdmin { text-align: center; margin-top: 50px; }
+        .logo-header { color: #28a745; font-weight: bold; font-size: 24px; margin-bottom: 10px; }
         input { display: block; width: 90%; margin: 10px auto; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
-        button { background-color: #28a745; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 95%; margin: 5px; }
+        button { background-color: #28a745; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 95%; margin: 5px; transition: 0.3s; }
+        button:hover { opacity: 0.8; }
         table { width: 100%; border-collapse: collapse; background: white; margin-top: 20px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         th { background-color: #28a745; color: white; }
+        .btn-excluir { background-color: #dc3545; }
+        .btn-ajuste { background-color: #007bff; }
+        footer { margin-top: 30px; text-align: center; color: #777; font-size: 0.9em; }
     </style>
 </head>
 <body>
-    <div id="loginAdmin" style="text-align: center; margin-top: 50px;">
+
+    <div id="loginAdmin">
+        <div class="logo-header">Banco VaniaCoin</div>
         <h2>Acesso Administrativo</h2>
-        <input type="password" id="senhaAdm" placeholder="Senha">
-        <button id="btnAcessar">Entrar</button>
+        <input type="password" id="senhaAdm" placeholder="Digite a senha secreta">
+        <button id="btnAcessar">Entrar no Painel</button>
     </div>
 
     <div id="painel" style="display: none;">
-        <h2>Painel de Controle</h2>
-        <button id="btnAbrirCadastro">+ Cadastrar Aluno</button>
-        <button id="btnExportar" style="background-color: #ffc107; color: black;">📥 Exportar Extrato</button>
-        
+        <div class="logo-header">Banco VaniaCoin - Painel de Controle</div>
+        <button id="btnAbrirCadastro" style="width: 280px;">+ Cadastrar Novo Usuário</button>
+        <button style="background-color: #ffc107; color: black; width: 280px;" id="btnExportar">📤 Exportar Extrato</button>
+        <button style="background-color: #dc3545; width: 280px;" onclick="window.location.reload()">Sair do Painel</button>
+
         <div id="formCadastro" class="box">
-            <input type="text" id="novoConta" placeholder="Conta">
-            <input type="text" id="novoDigito" placeholder="Dígito">
+            <h2 style="color: #28a745;">Cadastrar Aluno</h2>
+            <input type="text" id="novoConta" placeholder="Conta (9 dígitos)">
+            <input type="text" id="novoDigito" placeholder="Dígito (1 dígito)">
             <input type="text" id="novoNome" placeholder="Nome">
             <input type="text" id="novaSenha" placeholder="Senha">
             <input type="number" id="novoSaldo" placeholder="Saldo Inicial">
             <button id="btnSalvar">Salvar</button>
+            <button id="btnFechar" style="background-color: #6c757d;">Cancelar</button>
         </div>
-        <table><thead><tr><th>Conta</th><th>Nome</th><th>Saldo</th><th>Ações</th></tr></thead><tbody id="tabelaUsuarios"></tbody></table>
+
+        <h2>Usuários Cadastrados</h2>
+        <table>
+            <thead><tr><th>Conta-DV</th><th>Nome</th><th>Saldo</th><th>Ações</th></tr></thead>
+            <tbody id="tabelaUsuarios"></tbody>
+        </table>
+        <footer>VaniaCoin © 2026</footer>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDocs, collection, runTransaction } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDocs, collection, deleteDoc, runTransaction } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
-        const firebaseConfig = { apiKey: "AIzaSyCG_jh9lDlTj8mAKKm6sYhI9XNSP_OLjFY", authDomain: "banco-sandra.firebaseapp.com", projectId: "banco-sandra", storageBucket: "banco-sandra.firebasestorage.app", messagingSenderId: "506761695598", appId: "1:506761695598:web:783a6bfa6d5ff0b143317f" };
+        // CONFIGURAÇÃO DO SEU BANCO BANCO-SANDRA
+        const firebaseConfig = { apiKey: "AIzaSyCG_jh9lDlTj8mAKKm6sYhI9XNSP_OLjFY", authDomain: "banco-sandra.firebaseapp.com", projectId: "banco-sandra", storageBucket: "banco-sandra.firebasestorage.app", messagingSenderId: "506761695598", appId: "1:506761695598:web:783a6bfa6d5ff0b143317f", measurementId: "G-LXY6D6EQ0Q" };
         const db = getFirestore(initializeApp(firebaseConfig));
 
         document.getElementById('btnAcessar').onclick = () => {
             if(document.getElementById('senhaAdm').value === "9844") {
                 document.getElementById('loginAdmin').style.display = 'none';
                 document.getElementById('painel').style.display = 'block';
-                listar();
-            } else alert("Senha incorreta!");
+                listarUsuarios();
+            } else { alert("Senha incorreta!"); }
         };
 
-        async function listar() {
+        async function listarUsuarios() {
             const snap = await getDocs(collection(db, "usuarios"));
             const tbody = document.getElementById('tabelaUsuarios');
             tbody.innerHTML = '';
-            snap.forEach(d => {
+            snap.forEach((d) => {
                 const u = d.data();
-                tbody.innerHTML += `<tr><td>${d.id}</td><td>${u.nome}</td><td>${u.saldo}</td><td><button onclick="excluir('${d.id}')">Excluir</button></td></tr>`;
+                tbody.innerHTML += `<tr><td>${d.id}</td><td>${u.nome}</td><td>R$ ${Number(u.saldo || 0).toFixed(2)}</td>
+                <td><button class="btn-excluir" onclick="excluirUsuario('${d.id}')">Excluir</button></td></tr>`;
             });
         }
+
+        window.excluirUsuario = async (id) => { if(confirm("Excluir?")) { await deleteDoc(doc(db, "usuarios", id)); listarUsuarios(); } };
         
-        window.excluir = async (id) => { await runTransaction(db, async (t) => { t.delete(doc(db, "usuarios", id)); }); listar(); };
         document.getElementById('btnSalvar').onclick = async () => {
             const id = document.getElementById('novoConta').value + "-" + document.getElementById('novoDigito').value;
-            await setDoc(doc(db, "usuarios", id), { nome: document.getElementById('novoNome').value, senha: document.getElementById('novaSenha').value, saldo: parseFloat(document.getElementById('novoSaldo').value) });
-            listar();
+            await setDoc(doc(db, "usuarios", id), { nome: document.getElementById('novoNome').value, senha: document.getElementById('novaSenha').value, saldo: parseFloat(document.getElementById('novoSaldo').value) || 0 });
+            document.getElementById('formCadastro').style.display = 'none';
+            listarUsuarios();
         };
+
         document.getElementById('btnAbrirCadastro').onclick = () => document.getElementById('formCadastro').style.display = 'block';
+        document.getElementById('btnFechar').onclick = () => document.getElementById('formCadastro').style.display = 'none';
     </script>
 </body>
 </html>
