@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Administração - Banco VaniaCoin</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; background-color: #f4f4f9; }
+        .box { border: 2px solid #28a745; padding: 20px; border-radius: 8px; width: 400px; background: white; margin-bottom: 20px; display: none; }
+        #loginAdmin { text-align: center; margin-top: 50px; }
+        .logo-header { color: #28a745; font-weight: bold; font-size: 24px; margin-bottom: 10px; }
+        input { display: block; width: 90%; margin: 10px auto; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #28a745; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 95%; margin: 5px; transition: 0.3s; }
+        button:hover { opacity: 0.8; }
+        table { width: 100%; border-collapse: collapse; background: white; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #28a745; color: white; }
+        .btn-excluir, .btn-ajuste { padding: 2px 6px; font-size: 10px; margin: 2px; width: auto; }
+        .btn-excluir { background-color: #dc3545; }
+        .btn-ajuste { background-color: #007bff; }
+        footer { margin-top: 30px; text-align: center; color: #777; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+
+    <div id="loginAdmin">
+        <div class="logo-header">Banco VaniaCoin</div>
+        <h2>Acesso Administrativo</h2>
+        <input type="password" id="senhaAdm" placeholder="Digite a senha secreta">
+        <button id="btnAcessar">Entrar no Painel</button>
+    </div>
+
+    <div id="painel" style="display: none;">
+        <div class="logo-header">Banco VaniaCoin - Painel de Controle</div>
+        <button id="btnAbrirCadastro" style="width: 280px;">+ Cadastrar Novo Usuário</button>
+        <button style="background-color: #007bff; width: 280px;" onclick="document.getElementById('fileInput').click()">📥 Importar CSV (Excel)</button>
+        <input type="file" id="fileInput" style="display:none" accept=".csv">
+        <button style="background-color: #ffc107; color: black; width: 280px;" id="btnExportar">📤 Exportar Extrato</button>
+        <button style="background-color: #dc3545; width: 280px;" onclick="window.location.reload()">Sair do Painel</button>
+
+        <div id="formCadastro" class="box">
+            <h2 style="color: #28a745;">Cadastrar Aluno</h2>
+            <input type="text" id="novoConta" placeholder="Conta (9 dígitos)">
+            <input type="text" id="novoDigito" placeholder="Dígito (1 dígito)">
+            <input type="text" id="novoNome" placeholder="Nome">
+            <input type="text" id="novaSenha" placeholder="Senha">
+            <input type="number" id="novoSaldo" placeholder="Saldo Inicial">
+            <button id="btnSalvar">Salvar</button>
+            <button id="btnFechar" style="background-color: #6c757d;">Cancelar</button>
+        </div>
+
+        <h2>Usuários Cadastrados</h2>
+        <table>
+            <thead><tr><th>Conta-DV</th><th>Nome</th><th>Saldo</th><th>Ações</th></tr></thead>
+            <tbody id="tabelaUsuarios"></tbody>
+        </table>
+        <footer>VaniaCoin © 2026</footer>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDocs, collection, deleteDoc, runTransaction } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+
+        const SENHA_SECRETA = "9844";
+        const firebaseConfig = { 
+            apiKey: "AIzaSyCG_jh9lDlTj8mAKKm6sYhI9XNSP_OLjFY", 
+            authDomain: "banco-sandra.firebaseapp.com", 
+            projectId: "banco-sandra", 
+            storageBucket: "banco-sandra.firebasestorage.app", 
+            messagingSenderId: "506761695598", 
+            appId: "1:506761695598:web:783a6bfa6d5ff0b143317f", 
+            measurementId: "G-LXY6D6EQ0Q" 
+        };
+        const db = getFirestore(initializeApp(firebaseConfig));
+
+        document.getElementById('btnAcessar').onclick = () => {
+            if(document.getElementById('senhaAdm').value === SENHA_SECRETA) {
+                document.getElementById('loginAdmin').style.display = 'none';
+                document.getElementById('painel').style.display = 'block';
+                listarUsuarios();
+            } else { alert("Senha incorreta!"); }
+        };
+
+        document.getElementById('btnExportar').onclick = async () => {
+            const usersSnap = await getDocs(collection(db, "usuarios"));
+            const transacoesSnap = await getDocs(collection(db, "transacoes"));
+            const mapa = { "ADMIN-VANIA": "Administração", "LOJA-VANIA": "Loja Escola" };
+            usersSnap.forEach((u) => mapa[u.id] = u.data().nome);
+
+            let csvContent = "Origem;Destino;Valor;Data\n";
+            transacoesSnap.forEach((doc) => {
+                const t = doc.data();
+                const data = t.data && t.data.toDate ? t.data.toDate().toLocaleString() : "N/A";
+                const nomeOrigem = mapa[t.origem] || t.origem;
+                const nomeDestino = mapa[t.destino] || t.destino;
+                csvContent += `${nomeOrigem};${nomeDestino};${t.valor};${data}\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "extrato_nomes.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        document.getElementById('fileInput').onchange = (e) => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const linhas = event.target.result.split(/\r?\n/);
+                for (let i = 1; i < linhas.length; i++) {
+                    const colunas = linhas[i].split(';');
+                    if (colunas.length >= 5) {
+                        const id = `${colunas[0].trim()}-${colunas[1].trim()}`;
+                        await setDoc(doc(db, "usuarios", id), {
+                            nome: colunas[2].trim(),
+                            senha: colunas[3].trim(),
+                            saldo: parseFloat(colunas[4]) || 0
+                        });
+                    }
+                }
+                alert("Importação concluída!");
+                listarUsuarios();
+            };
+            reader.readAsText(file, "UTF-8");
+        };
+
+        async function listarUsuarios() {
+            const snap = await getDocs(collection(db, "usuarios"));
+            const tbody = document.getElementById('tabelaUsuarios');
+            tbody.innerHTML = '';
+            snap.forEach((d) => {
+                const u = d.data();
+                tbody.innerHTML += `<tr><td>${d.id}</td><td>${u.nome}</td><td>R$ ${Number(u.saldo || 0).toFixed(2)}</td>
+                <td><button class="btn-ajuste" onclick="ajustarSaldo('${d.id}', '${u.nome}', ${u.saldo || 0})">Ajustar</button>
+                <button class="btn-excluir" onclick="excluirUsuario('${d.id}')">Excluir</button></td></tr>`;
+            });
+        }
+
+        window.ajustarSaldo = async (id, nomeAtual, saldoAtual) => {
+            const valor = parseFloat(prompt(`Ajustar ${nomeAtual} (Saldo: R$ ${saldoAtual.toFixed(2)}):`));
+            const motivo = prompt("Motivo do ajuste:");
+            if (!isNaN(valor) && motivo) {
+                await runTransaction(db, async (t) => {
+                    t.update(doc(db, "usuarios", id), { saldo: saldoAtual + valor });
+                    t.set(doc(collection(db, "transacoes")), { origem: "ADMIN-VANIA", destino: id, valor, motivo, data: new Date() });
+                });
+                listarUsuarios();
+            }
+        };
+
+        window.excluirUsuario = async (id) => { if(confirm("Excluir?")) { await deleteDoc(doc(db, "usuarios", id)); listarUsuarios(); } };
+        
+        document.getElementById('btnSalvar').onclick = async () => {
+            const id = document.getElementById('novoConta').value + "-" + document.getElementById('novoDigito').value;
+            await setDoc(doc(db, "usuarios", id), { nome: document.getElementById('novoNome').value, senha: document.getElementById('novaSenha').value, saldo: parseFloat(document.getElementById('novoSaldo').value) || 0 });
+            document.getElementById('formCadastro').style.display = 'none';
+            listarUsuarios();
+        };
+
+        document.getElementById('btnAbrirCadastro').onclick = () => document.getElementById('formCadastro').style.display = 'block';
+        document.getElementById('btnFechar').onclick = () => document.getElementById('formCadastro').style.display = 'none';
+    </script>
+</body>
+</html>
