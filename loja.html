@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Magazine Luzia - A sua loja de confiança</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background-color: #f4f4f4; color: #333; }
+        header { background-color: #007BFF; color: white; padding: 20px; text-align: center; }
+        .busca { background: white; padding: 12px; margin-top: 10px; width: 60%; border-radius: 25px; border: none; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .banner { background-color: #0056b3; color: white; padding: 40px; text-align: center; }
+        .container { display: flex; flex-wrap: wrap; justify-content: center; padding: 20px; gap: 20px; }
+        .produto { background: white; padding: 20px; width: 220px; text-align: center; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: transform 0.2s; }
+        .produto img { width: 100%; height: 150px; object-fit: contain; border-radius: 8px; margin-bottom: 10px; }
+        .produto:hover { transform: translateY(-5px); }
+        .preco { color: #d9534f; font-weight: bold; font-size: 1.3em; margin: 10px 0; }
+        .botao { background-color: #FFD700; border: none; padding: 12px 20px; cursor: pointer; border-radius: 5px; font-weight: bold; width: 100%; margin-top: 10px; transition: background 0.3s; }
+        .botao:hover { background-color: #e6c200; }
+        footer { text-align: center; padding: 20px; background: #fff; margin-top: 20px; color: #666; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>MAGAZINE LUZIA</h1>
+    <input type="text" class="busca" placeholder="O que você procura hoje?">
+</header>
+
+<div class="banner">
+    <h2>Ofertas Incríveis Magazine Luzia!</h2>
+    <p>Tecnologia e Conforto para o seu Lar.</p>
+</div>
+
+<div class="container">
+    <div class="produto"><img src="fritadeira.webp" alt="Fritadeira"><h3>Fritadeira Elétrica</h3><p class="preco">R$ 350,00</p><button class="botao">Adicionar ao Carrinho</button></div>
+    <div class="produto"><img src="geladeira.png" alt="Geladeira"><h3>Geladeira Frost Free</h3><p class="preco">R$ 3.599,00</p><button class="botao">Adicionar ao Carrinho</button></div>
+    <div class="produto"><img src="maquina.webp" alt="Máquina"><h3>Máquina de Lavar</h3><p class="preco">R$ 2.100,00</p><button class="botao">Adicionar ao Carrinho</button></div>
+    <div class="produto"><img src="notebook.jpg" alt="Notebook"><h3>Notebook Gamer Pro</h3><p class="preco">R$ 4.500,00</p><button class="botao">Adicionar ao Carrinho</button></div>
+    <div class="produto"><img src="pcgamer.jpg" alt="PC Gamer"><h3>Setup PC Gamer</h3><p class="preco">R$ 5.999,00</p><button class="botao">Adicionar ao Carrinho</button></div>
+    <div class="produto"><img src="aspirador.webp" alt="Aspirador"><h3>Aspirador Robô</h3><p class="preco">R$ 899,00</p><button class="botao">Adicionar ao Carrinho</button></div>
+    <div class="produto"><img src="smartphone.jpg" alt="Smartphone"><h3>Smartphone G56 5G</h3><p class="preco">R$ 1.899,00</p><button class="botao">Adicionar ao Carrinho</button></div>
+    <div class="produto"><img src="tv.webp" alt="Smart TV"><h3>Smart TV 50" 4K</h3><p class="preco">R$ 2.899,00</p><button class="botao">Adicionar ao Carrinho</button></div>
+</div>
+
+<footer>
+    <p>&copy; 2026 Magazine Luzia - Todos os direitos reservados.</p>
+</footer>
+
+</body>
+</html>
