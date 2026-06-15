@@ -2,146 +2,45 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Banco VaniaCoin - Área do Aluno</title>
+    <title>Banco VaniaCoin</title>
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; background-color: #f4f4f9; text-align: center; }
-        .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        input, select { display: block; width: 90%; margin: 10px auto; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
-        button { background-color: #28a745; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 95%; margin-top: 10px; }
-        #areaAluno, #divPix { display: none; }
-        table { width: 100%; margin-top: 20px; border-collapse: collapse; font-size: 13px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #28a745; color: white; }
-        footer { margin-top: 30px; font-size: 12px; color: #666; }
-        .cor-envio { color: #dc3545; font-weight: bold; }
-        .cor-recebimento { color: #007bff; font-weight: bold; }
+        body { font-family: sans-serif; padding: 20px; background-color: #f4f4f9; text-align: center; }
+        .container { max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        input { width: 90%; padding: 10px; margin: 5px; }
+        button { width: 90%; padding: 10px; background: #28a745; color: white; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
-
     <div class="container" id="loginBox">
-        <h2>Banco VaniaCoin - Login</h2>
+        <h2>Login VaniaCoin</h2>
         <input type="text" id="inputConta" placeholder="Conta">
         <input type="text" id="inputDigito" placeholder="Dígito">
         <input type="password" id="inputSenha" placeholder="Senha">
         <button onclick="fazerLogin()">Entrar</button>
     </div>
-
-    <div class="container" id="areaAluno">
-        <h2 id="tituloBoasVindas">Olá, bem-vindo ao sistema VaniaCoin</h2>
-        <h3 id="tituloNome"></h3>
-        <h3>Saldo: <span id="saldoAtual" style="color: #28a745; font-weight: bold;">R$ 0.00</span></h3>
-        <button onclick="abrirPix()">Fazer Pix</button>
-        
-        <div id="divPix" style="margin-top:20px; border:1px solid #ddd; padding:10px;">
-            <label>Enviar para:</label>
-            <select id="selectDestinatario"></select>
-            <input type="number" id="pixValor" placeholder="Valor (ex: 10.50)" step="0.01">
-            <button onclick="enviarPix()" style="background-color: #007bff;">Confirmar Pix</button>
-        </div>
-
-        <h4>Extrato</h4>
-        <div id="extrato">Carregando...</div>
-        <button style="background-color: #dc3545;" onclick="window.location.reload()">Sair</button>
-        
-        <footer>Criado e desenvolvido por Vania Oliveira</footer>
+    <div class="container" id="areaAluno" style="display:none;">
+        <h2>Olá, <span id="nomeUser"></span></h2>
+        <h3>Saldo: R$ <span id="saldoUser"></span></h3>
+        <button onclick="window.location.reload()">Sair</button>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, getDocs, collection, query, where, or, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
-        const db = getFirestore(initializeApp({ 
-            apiKey: "AIzaSyCG_jh9lDlTj8mAKKm6sYhI9XNSP_OLjFY", 
-            authDomain: "banco-sandra.firebaseapp.com", 
-            projectId: "banco-sandra", 
-            storageBucket: "banco-sandra.firebasestorage.app", 
-            messagingSenderId: "506761695598", 
-            appId: "1:506761695598:web:783a6bfa6d5ff0b143317f", 
-            measurementId: "G-LXY6D6EQ0Q" 
-        }));
-
-        let contaAtual = "";
+        const db = getFirestore(initializeApp({ apiKey: "AIzaSyCG_jh9lDlTj8mAKKm6sYhI9XNSP_OLjFY", authDomain: "banco-sandra.firebaseapp.com", projectId: "banco-sandra", storageBucket: "banco-sandra.firebasestorage.app", messagingSenderId: "506761695598", appId: "1:506761695598:web:783a6bfa6d5ff0b143317f" }));
 
         window.fazerLogin = async () => {
             const id = document.getElementById('inputConta').value + "-" + document.getElementById('inputDigito').value;
             const senha = document.getElementById('inputSenha').value;
             const docSnap = await getDoc(doc(db, "usuarios", id));
-
             if (docSnap.exists() && docSnap.data().senha === senha) {
-                contaAtual = id;
                 document.getElementById('loginBox').style.display = 'none';
                 document.getElementById('areaAluno').style.display = 'block';
-                document.getElementById('tituloBoasVindas').innerText = "Olá, " + docSnap.data().nome + ", bem-vindo ao sistema VaniaCoin";
-                atualizarTudo();
-            } else { alert("Dados incorretos!"); }
+                document.getElementById('nomeUser').innerText = docSnap.data().nome;
+                document.getElementById('saldoUser').innerText = docSnap.data().saldo;
+            } else alert("Dados incorretos!");
         };
-
-        window.abrirPix = async () => {
-            document.getElementById('divPix').style.display = 'block';
-            const usersSnap = await getDocs(collection(db, "usuarios"));
-            const select = document.getElementById('selectDestinatario');
-            select.innerHTML = '<option value="LOJA-VANIA">Loja da Escola</option>';
-            usersSnap.forEach((u) => {
-                if (u.id !== contaAtual) select.innerHTML += `<option value="${u.id}">${u.data().nome}</option>`;
-            });
-        };
-
-        window.enviarPix = async () => {
-            const destino = document.getElementById('selectDestinatario').value;
-            const valor = parseFloat(document.getElementById('pixValor').value);
-            if (!destino || isNaN(valor) || valor <= 0) return alert("Dados inválidos!");
-
-            try {
-                await runTransaction(db, async (t) => {
-                    const remRef = doc(db, "usuarios", contaAtual);
-                    const destRef = doc(db, "usuarios", destino);
-                    const remSnap = await t.get(remRef);
-                    const destSnap = await t.get(destRef);
-                    if (!remSnap.exists() || remSnap.data().saldo < valor) throw "Saldo insuficiente!";
-                    t.update(remRef, { saldo: remSnap.data().saldo - valor });
-                    t.update(destRef, { saldo: destSnap.data().saldo + valor });
-                    t.set(doc(collection(db, "transacoes")), { origem: contaAtual, destino: destino, valor: valor, data: serverTimestamp() });
-                });
-                alert("Pix enviado!");
-                document.getElementById('divPix').style.display = 'none';
-                atualizarTudo();
-            } catch (e) { alert("Erro: " + e); }
-        };
-
-        async function atualizarTudo() {
-            const docSnap = await getDoc(doc(db, "usuarios", contaAtual));
-            document.getElementById('saldoAtual').innerText = "R$ " + Number(docSnap.data().saldo).toFixed(2);
-            carregarExtrato();
-        }
-
-        async function carregarExtrato() {
-            const usersSnap = await getDocs(collection(db, "usuarios"));
-            const mapa = { "ADMIN-VANIA": "Adm", "LOJA-VANIA": "Loja Escola" };
-            usersSnap.forEach((u) => mapa[u.id] = u.data().nome);
-
-            const q = query(collection(db, "transacoes"), or(where("origem", "==", contaAtual), where("destino", "==", contaAtual)));
-            const snap = await getDocs(q);
-            
-            let transacoes = [];
-            snap.forEach((d) => {
-                let t = d.data();
-                transacoes.push(t);
-            });
-
-            transacoes.sort((a, b) => b.data.seconds - a.data.seconds);
-
-            let html = `<table><tr><th>Data</th><th>Movimentação</th><th>Valor</th></tr>`;
-            transacoes.forEach((t) => {
-                const data = t.data ? t.data.toDate().toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : "--/-- --:--";
-                const ehEnvio = t.origem === contaAtual;
-                const classe = ehEnvio ? "cor-envio" : "cor-recebimento";
-                const sinal = ehEnvio ? "-" : "+";
-                const texto = ehEnvio ? "Para: " + (mapa[t.destino] || t.destino) : "De: " + (mapa[t.origem] || t.origem);
-                html += `<tr class="${classe}"><td>${data}</td><td>${texto}</td><td>${sinal} R$ ${Number(t.valor).toFixed(2)}</td></tr>`;
-            });
-            document.getElementById('extrato').innerHTML = html + `</table>`;
-        }
     </script>
 </body>
 </html>
