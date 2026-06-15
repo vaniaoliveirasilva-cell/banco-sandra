@@ -2,32 +2,50 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>ADM - Banco VaniaCoin</title>
+    <title>ADM - Banco SandraCoin</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background-color: #f4f4f9; }
-        .box { border: 2px solid #28a745; padding: 15px; border-radius: 8px; background: white; margin-bottom: 20px; display: none; width: 300px; }
+        body { 
+            font-family: sans-serif; 
+            padding: 20px; 
+            background-color: #f4f4f9; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            margin: 0;
+        }
+        .box { border: 2px solid #17a2b8; padding: 15px; border-radius: 8px; background: white; margin-bottom: 20px; display: none; width: 300px; }
         input { display: block; width: 90%; margin: 5px auto; padding: 8px; }
-        button { background-color: #28a745; color: white; border: none; padding: 10px; margin: 5px; cursor: pointer; border-radius: 4px; }
+        button { background-color: #17a2b8; color: white; border: none; padding: 10px; margin: 5px; cursor: pointer; border-radius: 4px; }
         table { width: 100%; border-collapse: collapse; background: white; margin-top: 20px; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background-color: #28a745; color: white; }
+        th { background-color: #17a2b8; color: white; }
+        footer { margin-top: 30px; text-align: center; color: #777; font-size: 14px; }
+        
+        #painel { width: 100%; display: none; }
+        #login { background: white; padding: 30px; border-radius: 10px; border: 1px solid #ddd; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
     </style>
 </head>
 <body>
 
-    <div id="login" style="text-align:center; margin-top:50px;">
-        <h2>Acesso Administrativo</h2>
+    <div id="login">
+        <h2>Bem vindo ao SandraCoin</h2>
+        </h2>Acesso Administrativo</h2>
         <input type="password" id="senha" placeholder="Senha">
         <button onclick="acessar()">Entrar</button>
     </div>
 
-    <div id="painel" style="display:none;">
-        <h2>Painel de Controle VaniaCoin</h2>
+    <div id="painel">
+        <h2>Painel de Controle SandraCoin</h2>
         <button onclick="document.getElementById('form').style.display='block'">+ Cadastrar Aluno</button>
-        <button style="background-color: #ffc107; color: black;" onclick="exportarCSV()">📥 Exportar Movimentações (CSV)</button>
+        <button style="background-color: #007bff;" onclick="document.getElementById('fileInput').click()">📥 Importar CSV</button>
+        <input type="file" id="fileInput" style="display:none" accept=".csv">
+        <button style="background-color: #ffc107; color: black;" id="btnExportar">📤 Exportar Transações (CSV)</button>
+        <button style="background-color: #6c757d;" onclick="window.location.reload()">Sair</button>
         
         <div id="form" class="box">
-            <input type="text" id="conta" placeholder="Conta (9 dígitos)">
+            <input type="text" id="conta" placeholder="Conta">
             <input type="text" id="digito" placeholder="Dígito">
             <input type="text" id="nome" placeholder="Nome">
             <input type="text" id="senhaC" placeholder="Senha">
@@ -36,9 +54,10 @@
         </div>
 
         <table>
-            <thead><tr><th>Conta-DV</th><th>Nome</th><th>Saldo</th><th>Ações</th></tr></thead>
+            <thead><tr><th>Nome</th><th>Conta</th><th>Dígito</th><th>Senha</th><th>Saldo</th><th>Ações</th></tr></thead>
             <tbody id="tabela"></tbody>
         </table>
+        <footer>Criado e desenvolvido por Vania Oliveira</footer>
     </div>
 
     <script type="module">
@@ -47,7 +66,15 @@
 
         const db = getFirestore(initializeApp({ apiKey: "AIzaSyCG_jh9lDlTj8mAKKm6sYhI9XNSP_OLjFY", authDomain: "banco-sandra.firebaseapp.com", projectId: "banco-sandra", storageBucket: "banco-sandra.firebasestorage.app", messagingSenderId: "506761695598", appId: "1:506761695598:web:783a6bfa6d5ff0b143317f", measurementId: "G-LXY6D6EQ0Q" }));
 
-        window.acessar = () => { if(document.getElementById('senha').value === "9844") { document.getElementById('login').style.display='none'; document.getElementById('painel').style.display='block'; listar(); } };
+        window.acessar = () => { 
+            if(document.getElementById('senha').value === "1506") { 
+                document.getElementById('login').style.display='none'; 
+                document.getElementById('painel').style.display='block'; 
+                document.body.style.justifyContent = "flex-start";
+                document.body.style.minHeight = "auto";
+                listar(); 
+            } else { alert("Senha incorreta!"); } 
+        };
 
         window.listar = async () => {
             const snap = await getDocs(collection(db, "usuarios"));
@@ -55,41 +82,72 @@
             tbody.innerHTML = '';
             snap.forEach(d => {
                 const u = d.data();
-                tbody.innerHTML += `<tr><td>${d.id}</td><td>${u.nome}</td><td>R$ ${Number(u.saldo).toFixed(2)}</td>
-                <td><button onclick="ajustar('${d.id}', ${u.saldo})">+/- Saldo</button>
-                <button onclick="excluir('${d.id}')">Excluir</button></td></tr>`;
+                const [conta, digito] = d.id.split('-');
+                tbody.innerHTML += `<tr><td>${u.nome || ""}</td><td>${conta || ""}</td><td>${digito || ""}</td><td>${u.senha || ""}</td><td>R$ ${parseFloat(u.saldo || 0).toFixed(2)}</td>
+                <td><button onclick="ajustar('${d.id}', ${u.saldo}, '${u.nome}')">+/- Saldo</button><button onclick="excluir('${d.id}')">Excluir</button></td></tr>`;
             });
         };
 
-        window.salvarAluno = async () => {
-            const id = document.getElementById('conta').value + "-" + document.getElementById('digito').value;
-            await setDoc(doc(db, "usuarios", id), { nome: document.getElementById('nome').value, senha: document.getElementById('senhaC').value, saldo: parseFloat(document.getElementById('saldo').value) });
-            listar();
-        };
-
-        window.ajustar = async (id, saldoAtual) => {
+        window.ajustar = async (id, saldoAtual, nome) => {
             const valor = parseFloat(prompt("Valor (use negativo para retirar):"));
+            const obs = prompt("Observação para este ajuste:");
             if(!isNaN(valor)) {
                 await runTransaction(db, async (t) => {
                     t.update(doc(db, "usuarios", id), { saldo: saldoAtual + valor });
-                    t.set(doc(collection(db, "transacoes")), { origem: "ADMIN", destino: id, valor, data: new Date() });
+                    t.set(doc(collection(db, "transacoes")), { origem: "ADMIN", destino: id, nomeDestino: nome, valor, obs: obs || "Sem observação", data: new Date() });
                 });
                 listar();
             }
         };
 
-        window.exportarCSV = async () => {
+        document.getElementById('btnExportar').onclick = async () => {
+            const usersSnap = await getDocs(collection(db, "usuarios"));
+            const nomes = { "ADMIN": "Administrador" };
+            usersSnap.forEach(u => nomes[u.id] = u.data().nome);
+
             const snap = await getDocs(collection(db, "transacoes"));
-            let csv = "Origem;Destino;Valor;Data\n";
-            snap.forEach(d => { const t = d.data(); csv += `${t.origem};${t.destino};${t.valor};${t.data.toDate().toLocaleString()}\n`; });
-            const blob = new Blob([csv], {type: 'text/csv'});
+            let csv = "\ufeffOrigem;Destino;Valor;Data;Observação\n";
+            snap.forEach(d => { 
+                const t = d.data(); 
+                const nomeOrigem = nomes[t.origem] || t.origem;
+                const nomeDestino = t.nomeDestino || nomes[t.destino] || t.destino;
+                const valorFormatado = String(t.valor).replace('.', ',');
+                csv += `${nomeOrigem};${nomeDestino};${valorFormatado};${t.data.toDate().toLocaleString()};${t.obs || ""}\n`; 
+            });
+            const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = "movimentacoes.csv";
+            link.download = "transacoes.csv";
             link.click();
         };
 
-        window.excluir = async (id) => { await deleteDoc(doc(db, "usuarios", id)); listar(); };
+        window.salvarAluno = async () => {
+            const id = document.getElementById('conta').value + "-" + document.getElementById('digito').value;
+            await setDoc(doc(db, "usuarios", id), { nome: document.getElementById('nome').value, senha: document.getElementById('senhaC').value, saldo: parseFloat(document.getElementById('saldo').value || 0) });
+            listar();
+        };
+
+        window.excluir = async (id) => { if(confirm("Confirmar exclusão?")) { await deleteDoc(doc(db, "usuarios", id)); listar(); } };
+
+        document.getElementById('fileInput').onchange = (e) => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const linhas = event.target.result.split(/\r?\n/);
+                for (let i = 0; i < linhas.length; i++) {
+                    const [nome, conta, digito, senha, saldo] = linhas[i].split(';');
+                    if (conta && digito) {
+                        await setDoc(doc(db, "usuarios", `${conta}-${digito}`), { 
+                            nome: nome, 
+                            senha: senha, 
+                            saldo: parseFloat(saldo) || 0 
+                        });
+                    }
+                }
+                alert("Importação concluída!"); listar();
+            };
+            reader.readAsText(file);
+        };
     </script>
 </body>
 </html>
