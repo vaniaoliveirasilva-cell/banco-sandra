@@ -53,7 +53,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
         import { getFirestore, doc, setDoc, getDocs, collection, deleteDoc, runTransaction } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
-        // IMPORTANTE: Se mudou de projeto no Firebase, atualize as configurações abaixo
         const firebaseConfig = { 
             apiKey: "AIzaSyCG_jh9lDlTj8mAKKm6sYhI9XNSP_OLjFY", 
             authDomain: "banco-sandra.firebaseapp.com", 
@@ -73,6 +72,18 @@
             } else { alert("Senha incorreta!"); } 
         };
 
+        // Função para alternar a visualização da senha
+        window.toggleSenha = (btn, senha) => {
+            const span = btn.nextElementSibling;
+            if (span.innerText === "********") {
+                span.innerText = senha;
+                btn.innerText = "Ocultar";
+            } else {
+                span.innerText = "********";
+                btn.innerText = "Ver";
+            }
+        };
+
         window.listar = async () => {
             try {
                 const snap = await getDocs(collection(db, "usuarios"));
@@ -81,15 +92,24 @@
                 snap.forEach(d => {
                     const u = d.data();
                     const [conta, digito] = d.id.split('-');
-                    tbody.innerHTML += `<tr><td>${u.nome || ""}</td><td>${conta || ""}</td><td>${digito || ""}</td><td>${u.senha || ""}</td><td>R$ ${parseFloat(u.saldo || 0).toFixed(2)}</td>
-                    <td><button onclick="ajustar('${d.id}', ${u.saldo}, '${u.nome}')">+/- Saldo</button><button onclick="excluir('${d.id}')">Excluir</button></td></tr>`;
+                    tbody.innerHTML += `<tr>
+                        <td>${u.nome || ""}</td>
+                        <td>${conta || ""}</td>
+                        <td>${digito || ""}</td>
+                        <td>
+                            <button onclick="toggleSenha(this, '${u.senha}')" style="padding: 2px 5px; font-size: 10px;">Ver</button>
+                            <span>********</span>
+                        </td>
+                        <td>R$ ${parseFloat(u.saldo || 0).toFixed(2)}</td>
+                        <td><button onclick="ajustar('${d.id}', ${u.saldo}, '${u.nome}')">+/- Saldo</button><button onclick="excluir('${d.id}')">Excluir</button></td>
+                    </tr>`;
                 });
-            } catch (e) { console.error("Erro ao listar:", e); alert("Erro ao conectar ao banco. Verifique as permissões (Rules)."); }
+            } catch (e) { console.error(e); alert("Erro ao carregar dados."); }
         };
 
         window.ajustar = async (id, saldoAtual, nome) => {
-            const valor = parseFloat(prompt("Valor (use negativo para retirar):"));
-            const obs = prompt("Observação para este ajuste:");
+            const valor = parseFloat(prompt("Valor:"));
+            const obs = prompt("Observação:");
             if(!isNaN(valor)) {
                 await runTransaction(db, async (t) => {
                     t.update(doc(db, "usuarios", id), { saldo: saldoAtual + valor });
@@ -100,16 +120,11 @@
         };
 
         document.getElementById('btnExportar').onclick = async () => {
-            const usersSnap = await getDocs(collection(db, "usuarios"));
-            const nomes = { "ADMIN": "Administrador" };
-            usersSnap.forEach(u => nomes[u.id] = u.data().nome);
             const snap = await getDocs(collection(db, "transacoes"));
             let csv = "\ufeffOrigem;Destino;Valor;Data;Observação\n";
             snap.forEach(d => { 
                 const t = d.data(); 
-                const nomeOrigem = nomes[t.origem] || t.origem;
-                const nomeDestino = t.nomeDestino || nomes[t.destino] || t.destino;
-                csv += `${nomeOrigem};${nomeDestino};${String(t.valor).replace('.', ',')};${t.data.toDate().toLocaleString()};${t.obs || ""}\n`; 
+                csv += `${t.origem};${t.destino};${t.valor};${t.data.toDate().toLocaleString()};${t.obs}\n`; 
             });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv;charset=utf-8;'}));
@@ -123,7 +138,7 @@
             listar();
         };
 
-        window.excluir = async (id) => { if(confirm("Confirmar exclusão?")) { await deleteDoc(doc(db, "usuarios", id)); listar(); } };
+        window.excluir = async (id) => { if(confirm("Excluir?")) { await deleteDoc(doc(db, "usuarios", id)); listar(); } };
 
         document.getElementById('fileInput').onchange = (e) => {
             const reader = new FileReader();
@@ -133,7 +148,7 @@
                     const [nome, conta, digito, senha, saldo] = linha.split(';');
                     if (conta && digito) await setDoc(doc(db, "usuarios", `${conta}-${digito}`), { nome, senha, saldo: parseFloat(saldo) || 0 });
                 }
-                alert("Importação concluída!"); listar();
+                alert("Concluído!"); listar();
             };
             reader.readAsText(e.target.files[0]);
         };
