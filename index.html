@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Banco SandraCoin</title>
+    <title>Banco EletivaBank</title>
     <style>
         body { font-family: sans-serif; padding: 20px; background-color: #f4f4f9; text-align: center; }
         .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -18,7 +18,7 @@
 <body>
 
     <div class="container" id="loginBox">
-        <h2>SandraCoin - Login</h2>
+        <h2>EletivaBank - Login</h2>
         <input type="text" id="inputConta" placeholder="Conta">
         <input type="text" id="inputDigito" placeholder="Dígito">
         <input type="password" id="inputSenha" placeholder="Senha">
@@ -26,7 +26,8 @@
     </div>
 
     <div class="container" id="areaAluno">
-        <h2 id="msgBoasVindas"></h2>
+        <!-- O uso de innerHTML permite o uso de <br> para quebrar as linhas -->
+        <h2 id="msgBoasVindas" style="line-height: 1.4;"></h2>
         <button onclick="abrirPix()">Fazer Pix</button>
         
         <div id="divPix" style="margin-top:20px; border:1px solid #ddd; padding:10px;">
@@ -95,7 +96,7 @@
                         destino: destinoId, 
                         nomeDestino: nomeDest,
                         valor: valor, 
-                        obs: "Pix via SandraCoin",
+                        obs: "Pix via EletivaBank",
                         data: serverTimestamp() 
                     });
                 });
@@ -107,7 +108,9 @@
 
         async function atualizarTudo() {
             const docSnap = await getDoc(doc(db, "usuarios", contaAtual));
-            document.getElementById('msgBoasVindas').innerText = "Bem vindo ao SandraCoin, seu saldo é: R$ " + Number(docSnap.data().saldo).toFixed(2);
+            const dadosCliente = docSnap.data();
+            // Formatação da mensagem em três linhas
+            document.getElementById('msgBoasVindas').innerHTML = `${dadosCliente.nome}<br>Bem vindo ao EletivaBank<br>Seu saldo é de: R$ ${Number(dadosCliente.saldo).toFixed(2)}`;
             carregarExtrato();
         }
 
