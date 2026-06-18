@@ -2,19 +2,9 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>ADM - Banco SandraCoin</title>
+    <title>ADM - EletivaBank</title>
     <style>
-        body { 
-            font-family: sans-serif; 
-            padding: 20px; 
-            background-color: #f4f4f9; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            min-height: 100vh; 
-            margin: 0;
-        }
+        body { font-family: sans-serif; padding: 20px; background-color: #f4f4f9; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
         .box { border: 2px solid #17a2b8; padding: 15px; border-radius: 8px; background: white; margin-bottom: 20px; display: none; width: 300px; }
         input { display: block; width: 90%; margin: 5px auto; padding: 8px; }
         button { background-color: #17a2b8; color: white; border: none; padding: 10px; margin: 5px; cursor: pointer; border-radius: 4px; }
@@ -22,7 +12,6 @@
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         th { background-color: #17a2b8; color: white; }
         footer { margin-top: 30px; text-align: center; color: #777; font-size: 14px; }
-        
         #painel { width: 100%; display: none; }
         #login { background: white; padding: 30px; border-radius: 10px; border: 1px solid #ddd; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
     </style>
@@ -30,14 +19,14 @@
 <body>
 
     <div id="login">
-        <h2>Bem vindo ao SandraCoin</h2>
-        </h2>Acesso Administrativo</h2>
+        <h2>Bem vindo ao EletivaBank</h2>
+        <h2>Acesso Administrativo</h2>
         <input type="password" id="senha" placeholder="Senha">
         <button onclick="acessar()">Entrar</button>
     </div>
 
     <div id="painel">
-        <h2>Painel de Controle SandraCoin</h2>
+        <h2>Painel de Controle EletivaBank</h2>
         <button onclick="document.getElementById('form').style.display='block'">+ Cadastrar Aluno</button>
         <button style="background-color: #007bff;" onclick="document.getElementById('fileInput').click()">📥 Importar CSV</button>
         <input type="file" id="fileInput" style="display:none" accept=".csv">
@@ -64,28 +53,38 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
         import { getFirestore, doc, setDoc, getDocs, collection, deleteDoc, runTransaction } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
-        const db = getFirestore(initializeApp({ apiKey: "AIzaSyCG_jh9lDlTj8mAKKm6sYhI9XNSP_OLjFY", authDomain: "banco-sandra.firebaseapp.com", projectId: "banco-sandra", storageBucket: "banco-sandra.firebasestorage.app", messagingSenderId: "506761695598", appId: "1:506761695598:web:783a6bfa6d5ff0b143317f", measurementId: "G-LXY6D6EQ0Q" }));
+        // IMPORTANTE: Se mudou de projeto no Firebase, atualize as configurações abaixo
+        const firebaseConfig = { 
+            apiKey: "AIzaSyCG_jh9lDlTj8mAKKm6sYhI9XNSP_OLjFY", 
+            authDomain: "banco-sandra.firebaseapp.com", 
+            projectId: "banco-sandra", 
+            storageBucket: "banco-sandra.firebasestorage.app", 
+            messagingSenderId: "506761695598", 
+            appId: "1:506761695598:web:783a6bfa6d5ff0b143317f" 
+        };
+
+        const db = getFirestore(initializeApp(firebaseConfig));
 
         window.acessar = () => { 
             if(document.getElementById('senha').value === "1506") { 
                 document.getElementById('login').style.display='none'; 
                 document.getElementById('painel').style.display='block'; 
-                document.body.style.justifyContent = "flex-start";
-                document.body.style.minHeight = "auto";
                 listar(); 
             } else { alert("Senha incorreta!"); } 
         };
 
         window.listar = async () => {
-            const snap = await getDocs(collection(db, "usuarios"));
-            const tbody = document.getElementById('tabela');
-            tbody.innerHTML = '';
-            snap.forEach(d => {
-                const u = d.data();
-                const [conta, digito] = d.id.split('-');
-                tbody.innerHTML += `<tr><td>${u.nome || ""}</td><td>${conta || ""}</td><td>${digito || ""}</td><td>${u.senha || ""}</td><td>R$ ${parseFloat(u.saldo || 0).toFixed(2)}</td>
-                <td><button onclick="ajustar('${d.id}', ${u.saldo}, '${u.nome}')">+/- Saldo</button><button onclick="excluir('${d.id}')">Excluir</button></td></tr>`;
-            });
+            try {
+                const snap = await getDocs(collection(db, "usuarios"));
+                const tbody = document.getElementById('tabela');
+                tbody.innerHTML = '';
+                snap.forEach(d => {
+                    const u = d.data();
+                    const [conta, digito] = d.id.split('-');
+                    tbody.innerHTML += `<tr><td>${u.nome || ""}</td><td>${conta || ""}</td><td>${digito || ""}</td><td>${u.senha || ""}</td><td>R$ ${parseFloat(u.saldo || 0).toFixed(2)}</td>
+                    <td><button onclick="ajustar('${d.id}', ${u.saldo}, '${u.nome}')">+/- Saldo</button><button onclick="excluir('${d.id}')">Excluir</button></td></tr>`;
+                });
+            } catch (e) { console.error("Erro ao listar:", e); alert("Erro ao conectar ao banco. Verifique as permissões (Rules)."); }
         };
 
         window.ajustar = async (id, saldoAtual, nome) => {
@@ -104,19 +103,16 @@
             const usersSnap = await getDocs(collection(db, "usuarios"));
             const nomes = { "ADMIN": "Administrador" };
             usersSnap.forEach(u => nomes[u.id] = u.data().nome);
-
             const snap = await getDocs(collection(db, "transacoes"));
             let csv = "\ufeffOrigem;Destino;Valor;Data;Observação\n";
             snap.forEach(d => { 
                 const t = d.data(); 
                 const nomeOrigem = nomes[t.origem] || t.origem;
                 const nomeDestino = t.nomeDestino || nomes[t.destino] || t.destino;
-                const valorFormatado = String(t.valor).replace('.', ',');
-                csv += `${nomeOrigem};${nomeDestino};${valorFormatado};${t.data.toDate().toLocaleString()};${t.obs || ""}\n`; 
+                csv += `${nomeOrigem};${nomeDestino};${String(t.valor).replace('.', ',')};${t.data.toDate().toLocaleString()};${t.obs || ""}\n`; 
             });
-            const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
             const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
+            link.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv;charset=utf-8;'}));
             link.download = "transacoes.csv";
             link.click();
         };
@@ -130,23 +126,16 @@
         window.excluir = async (id) => { if(confirm("Confirmar exclusão?")) { await deleteDoc(doc(db, "usuarios", id)); listar(); } };
 
         document.getElementById('fileInput').onchange = (e) => {
-            const file = e.target.files[0];
             const reader = new FileReader();
             reader.onload = async (event) => {
                 const linhas = event.target.result.split(/\r?\n/);
-                for (let i = 0; i < linhas.length; i++) {
-                    const [nome, conta, digito, senha, saldo] = linhas[i].split(';');
-                    if (conta && digito) {
-                        await setDoc(doc(db, "usuarios", `${conta}-${digito}`), { 
-                            nome: nome, 
-                            senha: senha, 
-                            saldo: parseFloat(saldo) || 0 
-                        });
-                    }
+                for (let linha of linhas) {
+                    const [nome, conta, digito, senha, saldo] = linha.split(';');
+                    if (conta && digito) await setDoc(doc(db, "usuarios", `${conta}-${digito}`), { nome, senha, saldo: parseFloat(saldo) || 0 });
                 }
                 alert("Importação concluída!"); listar();
             };
-            reader.readAsText(file);
+            reader.readAsText(e.target.files[0]);
         };
     </script>
 </body>
