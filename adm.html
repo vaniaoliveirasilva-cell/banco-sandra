@@ -1,10 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <title>ADM - EletivaBank</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background-color: #f4f4f9; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        body { font-family: sans-serif; padding: 20px; background-color: #f4f4f9; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; }
         .box { border: 2px solid #17a2b8; padding: 15px; border-radius: 8px; background: white; margin-bottom: 20px; display: none; width: 300px; }
         input { display: block; width: 90%; margin: 5px auto; padding: 8px; }
         button { background-color: #17a2b8; color: white; border: none; padding: 10px; margin: 5px; cursor: pointer; border-radius: 4px; }
@@ -12,8 +13,10 @@
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         th { background-color: #17a2b8; color: white; }
         footer { margin-top: 30px; text-align: center; color: #777; font-size: 14px; }
-        #painel { width: 100%; display: none; }
+        #painel { width: 100%; max-width: 800px; display: none; }
         #login { background: white; padding: 30px; border-radius: 10px; border: 1px solid #ddd; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
+        #busca { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; }
+        .filtro-data { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -27,10 +30,19 @@
 
     <div id="painel">
         <h2>Painel de Controle EletivaBank</h2>
+        
+        <input type="text" id="busca" placeholder="🔍 Buscar aluno por nome ou conta..." onkeyup="filtrarTabela()">
+
         <button onclick="document.getElementById('form').style.display='block'">+ Cadastrar Aluno</button>
         <button style="background-color: #007bff;" onclick="document.getElementById('fileInput').click()">📥 Importar CSV</button>
         <input type="file" id="fileInput" style="display:none" accept=".csv">
-        <button style="background-color: #ffc107; color: black;" id="btnExportar">📤 Exportar Transações (CSV)</button>
+        
+        <div class="filtro-data">
+            <input type="date" id="dataInicio" title="Data Inicial">
+            <input type="date" id="dataFim" title="Data Final">
+            <button style="background-color: #ffc107; color: black;" id="btnExportar">📤 Exportar Transações (CSV)</button>
+        </div>
+
         <button style="background-color: #6c757d;" onclick="window.location.reload()">Sair</button>
         
         <div id="form" class="box">
@@ -51,7 +63,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDocs, collection, deleteDoc, runTransaction } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDocs, getDoc, collection, deleteDoc, runTransaction } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
         const firebaseConfig = { 
             apiKey: "AIzaSyCG_jh9lDlTj8mAKKm6sYhI9XNSP_OLjFY", 
@@ -72,39 +84,40 @@
             } else { alert("Senha incorreta!"); } 
         };
 
-        // Função para alternar a visualização da senha
         window.toggleSenha = (btn, senha) => {
             const span = btn.nextElementSibling;
-            if (span.innerText === "********") {
-                span.innerText = senha;
-                btn.innerText = "Ocultar";
-            } else {
-                span.innerText = "********";
-                btn.innerText = "Ver";
-            }
+            span.innerText = (span.innerText === "********") ? senha : "********";
+            btn.innerText = (btn.innerText === "Ver") ? "Ocultar" : "Ver";
         };
 
         window.listar = async () => {
-            try {
-                const snap = await getDocs(collection(db, "usuarios"));
-                const tbody = document.getElementById('tabela');
-                tbody.innerHTML = '';
-                snap.forEach(d => {
-                    const u = d.data();
-                    const [conta, digito] = d.id.split('-');
-                    tbody.innerHTML += `<tr>
-                        <td>${u.nome || ""}</td>
-                        <td>${conta || ""}</td>
-                        <td>${digito || ""}</td>
-                        <td>
-                            <button onclick="toggleSenha(this, '${u.senha}')" style="padding: 2px 5px; font-size: 10px;">Ver</button>
-                            <span>********</span>
-                        </td>
-                        <td>R$ ${parseFloat(u.saldo || 0).toFixed(2)}</td>
-                        <td><button onclick="ajustar('${d.id}', ${u.saldo}, '${u.nome}')">+/- Saldo</button><button onclick="excluir('${d.id}')">Excluir</button></td>
-                    </tr>`;
-                });
-            } catch (e) { console.error(e); alert("Erro ao carregar dados."); }
+            const snap = await getDocs(collection(db, "usuarios"));
+            const tbody = document.getElementById('tabela');
+            tbody.innerHTML = '';
+            snap.forEach(d => {
+                const u = d.data();
+                const [conta, digito] = d.id.split('-');
+                tbody.innerHTML += `<tr class="linha-aluno">
+                    <td class="nome">${u.nome || ""}</td>
+                    <td class="conta">${conta || ""}</td>
+                    <td>${digito || ""}</td>
+                    <td>
+                        <button onclick="toggleSenha(this, '${u.senha}')" style="padding: 2px 5px; font-size: 10px;">Ver</button>
+                        <span>********</span>
+                    </td>
+                    <td>R$ ${parseFloat(u.saldo || 0).toFixed(2)}</td>
+                    <td><button onclick="ajustar('${d.id}', ${u.saldo}, '${u.nome}')">+/- Saldo</button><button onclick="excluir('${d.id}')">Excluir</button></td>
+                </tr>`;
+            });
+        };
+
+        window.filtrarTabela = () => {
+            const busca = document.getElementById('busca').value.toLowerCase();
+            document.querySelectorAll('.linha-aluno').forEach(linha => {
+                const nome = linha.querySelector('.nome').innerText.toLowerCase();
+                const conta = linha.querySelector('.conta').innerText.toLowerCase();
+                linha.style.display = (nome.includes(busca) || conta.includes(busca)) ? '' : 'none';
+            });
         };
 
         window.ajustar = async (id, saldoAtual, nome) => {
@@ -113,22 +126,51 @@
             if(!isNaN(valor)) {
                 await runTransaction(db, async (t) => {
                     t.update(doc(db, "usuarios", id), { saldo: saldoAtual + valor });
-                    t.set(doc(collection(db, "transacoes")), { origem: "ADMIN", destino: id, nomeDestino: nome, valor, obs: obs || "Sem observação", data: new Date() });
+                    t.set(doc(collection(db, "transacoes")), { 
+                        origem: "ADMIN", 
+                        nomeOrigem: "Administrador", 
+                        destino: id, 
+                        nomeDestino: nome, 
+                        valor: valor, 
+                        obs: obs || "Sem observação", 
+                        data: new Date() 
+                    });
                 });
                 listar();
             }
         };
 
         document.getElementById('btnExportar').onclick = async () => {
+            const inicio = document.getElementById('dataInicio').value;
+            const fim = document.getElementById('dataFim').value;
+            
             const snap = await getDocs(collection(db, "transacoes"));
-            let csv = "\ufeffOrigem;Destino;Valor;Data;Observação\n";
-            snap.forEach(d => { 
+            
+            // Cache para evitar muitas chamadas ao banco caso tenhamos muitas transações
+            const usuariosCache = {}; 
+            const snapUsers = await getDocs(collection(db, "usuarios"));
+            snapUsers.forEach(u => usuariosCache[u.id] = u.data().nome);
+
+            let csv = "\ufeffNome Origem;Nome Destino;Conta Destino;Valor;Data;Observação\n";
+            
+            for (const d of snap.docs) { 
                 const t = d.data(); 
-                csv += `${t.origem};${t.destino};${t.valor};${t.data.toDate().toLocaleString()};${t.obs}\n`; 
-            });
+                const dataTransacao = t.data.toDate();
+                const dataStr = dataTransacao.toISOString().split('T')[0];
+
+                if ((!inicio || dataStr >= inicio) && (!fim || dataStr <= fim)) {
+                    // Tenta pegar o nome da origem salva. Se não houver, usa o ID da conta de origem no cache.
+                    const nomeOrigem = t.nomeOrigem || usuariosCache[t.origem] || t.origem || "Desconhecido";
+                    const nomeDestino = t.nomeDestino || usuariosCache[t.destino] || "Desconhecido";
+                    
+                    csv += `${nomeOrigem};${nomeDestino};${t.destino || ""};${t.valor};${dataTransacao.toLocaleString()};${t.obs}\n`; 
+                }
+            }
+            
             const link = document.createElement("a");
-            link.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv;charset=utf-8;'}));
-            link.download = "transacoes.csv";
+            const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+            link.href = URL.createObjectURL(blob);
+            link.download = "relatorio_transacoes.csv";
             link.click();
         };
 
