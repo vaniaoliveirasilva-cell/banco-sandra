@@ -8,11 +8,13 @@
         .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         input, select { display: block; width: 90%; margin: 10px auto; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
         button { background-color: #17a2b8; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 95%; margin-top: 10px; }
-        #areaAluno, #divPix { display: none; }
+        #areaAluno, #divPix, #divPoupanca { display: none; }
         table { width: 100%; margin-top: 20px; border-collapse: collapse; font-size: 13px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #17a2b8; color: white; }
         footer { margin-top: 30px; font-size: 12px; color: #666; }
+        .poupanca-box { background: #e9ecef; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .rendimento-info { font-size: 0.9em; color: #28a745; margin-top: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -26,30 +28,45 @@
     </div>
 
     <div class="container" id="areaAluno">
-        <!-- O uso de innerHTML permite o uso de <br> para quebrar as linhas -->
         <h2 id="msgBoasVindas" style="line-height: 1.4;"></h2>
+        <div class="poupanca-box">
+            <strong>Poupança: M$ <span id="saldoPoupanca">0.00</span></strong>
+            <div id="divRendimento" class="rendimento-info">Rendimento acumulado: M$ 0.00</div>
+            <button onclick="togglePoupanca()" style="background-color: #20c997;">Gerenciar Poupança</button>
+            <div id="divPoupanca">
+                <input type="number" id="poupancaValor" placeholder="Valor para depósito" step="0.01">
+                <button onclick="depositarPoupanca()" style="background-color: #155724;">Confirmar Depósito</button>
+                <hr>
+                <button onclick="sacarPoupanca()" style="background-color: #d9534f;">Sacar com Rendimento</button>
+            </div>
+        </div>
+
         <button onclick="abrirPix()">Fazer Pix</button>
-        
         <div id="divPix" style="margin-top:20px; border:1px solid #ddd; padding:10px;">
-            <label>Enviar para:</label>
             <select id="selectDestinatario"></select>
             <input type="number" id="pixValor" placeholder="Valor" step="0.01">
             <button onclick="enviarPix()" style="background-color: #007bff;">Confirmar Pix</button>
         </div>
 
         <h4>Extrato</h4>
+        <input type="date" id="filtroData" onchange="carregarExtrato()">
         <div id="extrato">Carregando...</div>
-        <button style="background-color: #6c757d;" onclick="window.location.reload()">Sair</button>
+        
+        <button style="background-color: #6c757d; margin-top: 20px;" onclick="sair()">Sair</button>
         <footer>Criado e desenvolvido por Vania Oliveira</footer>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, getDocs, collection, query, where, or, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, getDocs, collection, query, where, or, runTransaction, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
-        const db = getFirestore(initializeApp({ apiKey: "AIzaSyCG_jh9lDlTj8mAKKm6sYhI9XNSP_OLjFY", authDomain: "banco-sandra.firebaseapp.com", projectId: "banco-sandra", storageBucket: "banco-sandra.firebasestorage.app", messagingSenderId: "506761695598", appId: "1:506761695598:web:783a6bfa6d5ff0b143317f", measurementId: "G-LXY6D6EQ0Q" }));
+        const db = getFirestore(initializeApp({ apiKey: "AIzaSyCG_jh9lDlTj8mAKKm6sYhI9XNSP_OLjFY", authDomain: "banco-sandra.firebaseapp.com", projectId: "banco-sandra", storageBucket: "banco-sandra.firebasestorage.app", messagingSenderId: "506761695598", appId: "1:506761695598:web:783a6bfa6d5ff0b143317f" }));
 
         let contaAtual = "";
+        let cacheUsuarios = {}; // Cache para facilitar a busca de nomes
+        const TAXA_MENSAL = 0.05; 
+
+        window.sair = () => { if(confirm("Deseja realmente sair?")) window.location.reload(); };
 
         window.fazerLogin = async () => {
             const id = document.getElementById('inputConta').value + "-" + document.getElementById('inputDigito').value;
@@ -59,82 +76,133 @@
                 contaAtual = id;
                 document.getElementById('loginBox').style.display = 'none';
                 document.getElementById('areaAluno').style.display = 'block';
+                // Carrega todos usuários para cache
+                const users = await getDocs(collection(db, "usuarios"));
+                users.forEach(u => cacheUsuarios[u.id] = u.data().nome);
                 atualizarTudo();
             } else { alert("Dados incorretos!"); }
         };
 
+        window.atualizarTudo = async () => {
+            const snap = await getDoc(doc(db, "usuarios", contaAtual));
+            const d = snap.data();
+            
+            const saldoPoup = d.poupanca || 0;
+            let rendimentoCalculado = 0;
+            if (d.dataInicioPoupanca) {
+                const dataInicio = d.dataInicioPoupanca.toDate();
+                const mesesPassados = (new Date() - dataInicio) / (1000 * 60 * 60 * 24 * 30);
+                rendimentoCalculado = saldoPoup * TAXA_MENSAL * Math.max(mesesPassados, 0);
+            }
+
+            document.getElementById('msgBoasVindas').innerHTML = `${d.nome}<br>Saldo: M$ ${Number(d.saldo).toFixed(2)}`;
+            document.getElementById('saldoPoupanca').innerText = Number(saldoPoup).toFixed(2);
+            document.getElementById('divRendimento').innerText = `Rendimento acumulado: M$ ${rendimentoCalculado.toFixed(2)}`;
+            
+            carregarExtrato();
+        };
+
+        window.depositarPoupanca = async () => {
+            const valor = parseFloat(document.getElementById('poupancaValor').value);
+            if (isNaN(valor) || valor <= 0) return alert("Valor inválido!");
+            await runTransaction(db, async (t) => {
+                const uRef = doc(db, "usuarios", contaAtual);
+                const uData = (await t.get(uRef)).data();
+                if (uData.saldo < valor) throw "Saldo insuficiente!";
+                t.update(uRef, { 
+                    saldo: uData.saldo - valor, 
+                    poupanca: (uData.poupanca || 0) + valor,
+                    dataInicioPoupanca: uData.dataInicioPoupanca || serverTimestamp() 
+                });
+                t.set(doc(collection(db, "transacoes")), { origem: contaAtual, destino: "POUPANÇA", valor: valor, obs: "Depósito Poupança", data: serverTimestamp() });
+            });
+            atualizarTudo();
+        };
+
+        window.sacarPoupanca = async () => {
+            const uRef = doc(db, "usuarios", contaAtual);
+            const uData = (await getDoc(uRef)).data();
+            const saldoPoup = uData.poupanca || 0;
+            if (saldoPoup <= 0) return alert("Sem saldo na poupança!");
+
+            const dataInicio = uData.dataInicioPoupanca ? uData.dataInicioPoupanca.toDate() : new Date();
+            const mesesPassados = (new Date() - dataInicio) / (1000 * 60 * 60 * 24 * 30);
+            const rendimento = saldoPoup * TAXA_MENSAL * Math.max(mesesPassados, 0);
+            const valorTotal = saldoPoup + rendimento;
+
+            if(confirm(`Saque: Você receberá M$ ${valorTotal.toFixed(2)} (Principal: M$ ${saldoPoup.toFixed(2)} + Rendimento: M$ ${rendimento.toFixed(2)}). Confirmar?`)) {
+                await updateDoc(uRef, { saldo: uData.saldo + valorTotal, poupanca: 0, dataInicioPoupanca: null });
+                atualizarTudo();
+            }
+        };
+
         window.abrirPix = async () => {
             document.getElementById('divPix').style.display = 'block';
-            const usersSnap = await getDocs(collection(db, "usuarios"));
             const select = document.getElementById('selectDestinatario');
             select.innerHTML = '<option value="">Selecione...</option>';
-            usersSnap.forEach((u) => {
-                if (u.id !== contaAtual) select.innerHTML += `<option value="${u.id}">${u.data().nome || u.id}</option>`;
+            Object.keys(cacheUsuarios).forEach(id => { 
+                if (id !== contaAtual) select.innerHTML += `<option value="${id}">${cacheUsuarios[id]}</option>`; 
             });
         };
 
         window.enviarPix = async () => {
-            const destinoId = document.getElementById('selectDestinatario').value;
-            const nomeDest = document.getElementById('selectDestinatario').options[document.getElementById('selectDestinatario').selectedIndex].text;
+            const destId = document.getElementById('selectDestinatario').value;
             const valor = parseFloat(document.getElementById('pixValor').value);
+            if (!destId || isNaN(valor) || valor <= 0) return alert("Dados inválidos!");
             
-            if (!destinoId || isNaN(valor) || valor <= 0) return alert("Dados inválidos!");
-
             try {
                 await runTransaction(db, async (t) => {
                     const remRef = doc(db, "usuarios", contaAtual);
-                    const destRef = doc(db, "usuarios", destinoId);
+                    const destRef = doc(db, "usuarios", destId);
                     const remSnap = await t.get(remRef);
                     const destSnap = await t.get(destRef);
-                    
-                    if (!remSnap.exists() || remSnap.data().saldo < valor) throw "Saldo insuficiente!";
-                    
-                    t.update(remRef, { saldo: remSnap.data().saldo - valor });
-                    t.update(destRef, { saldo: destSnap.data().saldo + valor });
-                    t.set(doc(collection(db, "transacoes")), { 
-                        origem: contaAtual, 
-                        destino: destinoId, 
-                        nomeDestino: nomeDest,
-                        valor: valor, 
-                        obs: "Pix via EletivaBank",
-                        data: serverTimestamp() 
-                    });
+                    const rData = remSnap.data();
+                    const dData = destSnap.data();
+                    if (rData.saldo < valor) throw "Saldo insuficiente!";
+                    t.update(remRef, { saldo: rData.saldo - valor });
+                    t.update(destRef, { saldo: dData.saldo + valor });
+                    t.set(doc(collection(db, "transacoes")), { origem: contaAtual, destino: destId, valor: valor, obs: "Pix", data: serverTimestamp() });
                 });
-                alert("Pix realizado!");
-                document.getElementById('divPix').style.display = 'none';
+                alert("Pix realizado com sucesso!");
                 atualizarTudo();
-            } catch (e) { alert("Erro ao processar: " + e); }
+            } catch (e) { alert("Erro ao realizar Pix: " + e); }
         };
 
-        async function atualizarTudo() {
-            const docSnap = await getDoc(doc(db, "usuarios", contaAtual));
-            const dadosCliente = docSnap.data();
-            // Formatação da mensagem em três linhas
-            document.getElementById('msgBoasVindas').innerHTML = `${dadosCliente.nome}<br>Bem vindo ao EletivaBank<br>Seu saldo é de: R$ ${Number(dadosCliente.saldo).toFixed(2)}`;
-            carregarExtrato();
-        }
-
-        async function carregarExtrato() {
-            const usersSnap = await getDocs(collection(db, "usuarios"));
-            const nomes = {};
-            usersSnap.forEach(u => nomes[u.id] = u.data().nome);
-
+        window.carregarExtrato = async () => {
+            const filtro = document.getElementById('filtroData').value;
             const q = query(collection(db, "transacoes"), or(where("origem", "==", contaAtual), where("destino", "==", contaAtual)));
             const snap = await getDocs(q);
-            let html = `<table><tr><th>Data</th><th>Movimentação</th><th>Valor</th></tr>`;
             let transacoes = [];
-            snap.forEach(d => transacoes.push(d.data()));
-            transacoes.sort((a, b) => b.data.seconds - a.data.seconds);
-
+            snap.forEach(d => {
+                const t = d.data();
+                if (t.data) {
+                    const dataObj = t.data.toDate();
+                    if (!filtro || dataObj.toISOString().split('T')[0] === filtro) transacoes.push({...t, dataObj});
+                }
+            });
+            transacoes.sort((a, b) => b.dataObj - a.dataObj);
+            
+            let html = `<table><tr><th>Data</th><th>Mov.</th><th>Valor</th></tr>`;
             transacoes.forEach(t => {
-                const data = t.data ? t.data.toDate().toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : "--/--";
-                const ehEnvio = t.origem === contaAtual;
-                const nomeOutro = ehEnvio ? (t.nomeDestino || t.destino) : (nomes[t.origem] || t.origem);
-                const cor = ehEnvio ? "color: red;" : "color: blue;";
-                html += `<tr style="${cor}"><td>${data}</td><td>${ehEnvio ? 'Para: '+nomeOutro : 'De: '+nomeOutro}</td><td>${ehEnvio ? '-' : '+'} R$ ${Number(t.valor).toFixed(2)}</td></tr>`;
+                const ehDebito = (t.origem === contaAtual);
+                let descricao = t.obs;
+                
+                // Lógica de nomes
+                if (t.obs === "Pix") {
+                    if (ehDebito) descricao = `Pix para ${cacheUsuarios[t.destino] || 'Destinatário'}`;
+                    else descricao = `Pix de ${cacheUsuarios[t.origem] || 'Remetente'}`;
+                }
+
+                html += `<tr style="color:${ehDebito ? 'red' : 'blue'}">
+                            <td>${t.dataObj.toLocaleDateString()}</td>
+                            <td>${descricao}</td>
+                            <td>${ehDebito ? '-' : '+'} M$ ${Number(t.valor).toFixed(2)}</td>
+                        </tr>`;
             });
             document.getElementById('extrato').innerHTML = html + `</table>`;
-        }
+        };
+        
+        window.togglePoupanca = () => { const div = document.getElementById('divPoupanca'); div.style.display = div.style.display === 'block' ? 'none' : 'block'; };
     </script>
 </body>
 </html>
